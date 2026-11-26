@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>Southern Urban Planning — Bus Network</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+:root{--ink:#18212b;--muted:#7c8794;--line:#e9edf1;--blue:#2768e8;--glass:rgba(255,255,255,.91);--shadow:0 12px 38px rgba(25,40,58,.12)}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--ink);background:#edf1f4;overflow:hidden}
+#map{position:absolute;inset:0;background:#e9eef2}
+header{height:62px;position:absolute;z-index:600;top:14px;left:18px;right:18px;display:flex;align-items:center;justify-content:space-between;padding:0 17px;background:var(--glass);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);border:1px solid rgba(255,255,255,.9);border-radius:17px;box-shadow:var(--shadow)}
+.brand{display:flex;align-items:center;gap:11px;min-width:0}
+.brandmark{width:33px;height:33px;border-radius:10px;background:#192431;color:#fff;display:grid;place-items:center;font-size:12px;font-weight:800;letter-spacing:-.5px}
+.brandname{font-size:12px;font-weight:800;letter-spacing:1.1px;white-space:nowrap}
+.branddesc{font-size:9px;color:var(--muted);letter-spacing:1.1px;margin-top:3px}
+.header-right{font-size:10px;color:#7c8794;letter-spacing:1.2px;font-weight:700}
+.panel{position:absolute;z-index:500;top:91px;left:18px;bottom:18px;width:348px;max-height:calc(100% - 109px);display:flex;flex-direction:column;background:var(--glass);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);border:1px solid rgba(255,255,255,.9);border-radius:19px;box-shadow:var(--shadow);overflow:hidden}
+.panel-head{padding:21px 20px 14px}
+.kicker{font-size:9px;letter-spacing:1.7px;font-weight:800;color:#929daa}
+h1{font-size:24px;letter-spacing:-1px;margin:7px 0 4px;font-weight:750}
+.subtitle{font-size:11px;color:var(--muted)}
+.search-wrap{padding:0 20px 14px}
+.search{width:100%;height:39px;border:1px solid #e6ebef;border-radius:11px;background:rgba(255,255,255,.86);padding:0 12px;font:12px inherit;outline:none;color:var(--ink)}
+.search:focus{border-color:#a8c2f3;box-shadow:0 0 0 3px rgba(39,104,232,.08)}
+.tabs{display:flex;gap:5px;padding:0 20px 13px;border-bottom:1px solid var(--line)}
+.tab{border:0;background:transparent;color:#778392;border-radius:8px;padding:8px 10px;font-size:10px;font-weight:700;cursor:pointer}
+.tab.active{background:#edf3ff;color:#245fc9}
+.panel-content{overflow:auto;min-height:0;padding:14px 20px 18px}
+.section-label{display:flex;align-items:center;justify-content:space-between;font-size:9px;font-weight:800;letter-spacing:1.2px;color:#929daa;margin:3px 0 10px}
+.count{font-size:9px;letter-spacing:0;background:#f0f3f6;color:#758191;padding:4px 7px;border-radius:20px}
+.operator-row{display:flex;align-items:center;gap:8px;margin-bottom:13px;flex-wrap:wrap}
+.operator-chip{border:1px solid #e8edf1;background:rgba(255,255,255,.7);border-radius:8px;padding:7px 9px;font-size:10px;color:#5f6b79}
+.operator-chip.active{border-color:#bfd0f3;background:#f1f5ff;color:#245fc9}
+.route-list{display:flex;flex-direction:column;gap:5px}
+.route{width:100%;display:flex;align-items:center;gap:10px;text-align:left;border:1px solid transparent;border-radius:10px;background:transparent;padding:10px 9px;cursor:pointer;color:var(--ink)}
+.route:hover,.route.selected{background:#f1f5fb;border-color:#e4ebf6}
+.route-color{width:4px;height:29px;border-radius:8px;flex:none}
+.route-info{flex:1;min-width:0}
+.route-info b{font-size:11px;display:block;font-weight:750}
+.route-info small{display:block;font-size:10px;color:var(--muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.route-arrow{color:#a5afba;font-size:16px}
+.loading,.empty{font-size:11px;line-height:1.6;color:#7b8794;padding:12px 3px}
+.panel-foot{border-top:1px solid var(--line);padding:12px 20px;display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:9px;color:#87929e}
+.feed-status{display:flex;align-items:center;gap:6px}
+.status-dot{width:6px;height:6px;border-radius:50%;background:#d39a36;display:inline-block}
+.status-dot.ok{background:#27a36a}
+.map-tools{position:absolute;z-index:450;right:18px;top:91px;display:flex;flex-direction:column;gap:7px}
+.tool{height:37px;min-width:38px;border:1px solid rgba(255,255,255,.9);border-radius:11px;background:var(--glass);backdrop-filter:blur(16px);box-shadow:0 4px 16px rgba(25,40,58,.1);font-size:10px;color:#536171;cursor:pointer;padding:0 11px}
+.tool:hover{color:var(--blue)}
+.map-credit{position:absolute;z-index:400;bottom:12px;right:14px;background:rgba(255,255,255,.78);backdrop-filter:blur(10px);padding:5px 8px;border-radius:7px;font-size:9px;color:#647180}
+.leaflet-control-zoom{border:0!important;box-shadow:var(--shadow)!important;border-radius:10px!important;overflow:hidden}
+.leaflet-control-zoom a{border:0!important;color:#455466!important}
+.leaflet-popup-content{font-family:inherit;font-size:11px;line-height:1.6}
+@media(max-width:700px){
+ body{overflow:auto}
+ header{top:9px;left:9px;right:9px;height:55px;padding:0 12px}
+ .branddesc{display:none}.brandname{font-size:10px}
+ .header-right{font-size:9px}
+ #map{position:fixed;inset:0 0 auto;height:62vh}
+ .panel{top:calc(62vh - 18px);left:9px;right:9px;bottom:auto;width:auto;max-height:none;height:calc(38vh + 9px);border-radius:18px 18px 0 0}
+ .panel-head{padding:14px 16px 10px}h1{font-size:19px;margin:4px 0}
+ .search-wrap{padding:0 16px 10px}.tabs{padding:0 16px 9px}
+ .panel-content{padding:10px 16px}
+ .panel-foot{padding:9px 16px}
+ .map-tools{top:73px;right:10px}
+ .map-credit{bottom:calc(38vh + 2px);right:10px}
+}
+</style>
+</head>
+<body>
+<div id="map"></div>
+<header>
+  <div class="brand">
+    <div class="brandmark">SU</div>
+    <div><div class="brandname">SOUTHERN URBAN PLANNING</div><div class="branddesc">PUBLIC INFRASTRUCTURE &amp; URBAN DEVELOPMENT</div></div>
+  </div>
+  <div class="header-right">JOHOR · MALAYSIA</div>
+</header>
+
+<aside class="panel">
+  <div class="panel-head">
+    <div class="kicker">TRANSPORT NETWORKS</div>
+    <h1>Bus Network</h1>
+    <div class="subtitle">Johor Bahru Metropolitan Area</div>
+  </div>
+  <div class="search-wrap">
+    <input id="search" class="search" placeholder="Search route or destination…" autocomplete="off">
+  </div>
+  <div class="tabs">
+    <button class="tab active" id="routesTab">Routes</button>
+    <button class="tab" id="stopsTab">Stops</button>
+    <button class="tab" id="operatorsTab">Operators</button>
+  </div>
+  <div class="panel-content">
+    <div id="routesView">
+      <div class="section-label">BAS.MY JOHOR BAHRU <span class="count" id="routeCount">—</span></div>
+      <div id="routeList" class="route-list"><div class="loading">Loading official route data…</div></div>
+    </div>
+    <div id="stopsView" hidden>
+      <div class="section-label">BUS STOPS <span class="count" id="stopCount">—</span></div>
+      <div id="stopList" class="route-list"><div class="loading">Stops will appear when the feed loads.</div></div>
+    </div>
+    <div id="operatorsView" hidden>
+      <div class="section-label">NETWORK OPERATORS</div>
+      <div class="operator-row">
+        <span class="operator-chip active">BAS.MY Johor Bahru</span>
+        <a class="operator-chip" href="https://www.causewaylink.com.my/routes-schedules/" target="_blank" rel="noopener">Causeway Link ↗</a>
+        <a class="operator-chip" href="https://paj.com.my/" target="_blank" rel="noopener">Bas Muafakat Johor ↗</a>
+      </div>
+      <div class="loading">Causeway Link and BMJ are kept separate. Their route-level data will be added after official route and stop information is verified.</div>
+    </div>
+  </div>
+  <div class="panel-foot">
+    <span class="feed-status" id="basStatus"><i class="status-dot"></i>Connecting to official GTFS</span>
+    <span id="networkStats">— routes · — stops</span>
+  </div>
+</aside>
+
+<div class="map-tools">
+  <button class="tool" id="allRoutesBtn" title="Show all routes">All routes</button>
+  <button class="tool" id="baseMapBtn" title="Switch map layer">Map layer</button>
+</div>
+<div class="map-credit">© OpenStreetMap contributors</div>
+
+<script>
+const GTFS_URL = "https://api.data.gov.my/gtfs-static/mybas-johor";
+const map = L.map("map",{zoomControl:true}).setView([1.4927,103.7414],11);
+const osm = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{
+  maxZoom:19,
+  attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>'
+}).addTo(map);
+
+let transportLayer=null;
+document.getElementById("baseMapBtn").onclick=()=>{
+  if(transportLayer && map.hasLayer(transportLayer)){
+    map.removeLayer(transportLayer);osm.addTo(map);return;
+  }
+  const key=prompt("Enter a Thunderforest API key to use the Transport map. Cancel to keep the standard map.");
+  if(!key)return;
+  if(transportLayer)map.removeLayer(transportLayer);
+  transportLayer=L.tileLayer("https://tile.thunderforest.com/transport/{z}/{x}/{y}.png?apikey="+encodeURIComponent(key.trim()),{
+    maxZoom:22,attribution:'Maps © <a href="https://www.thunderforest.com/">Thunderforest</a>, Data © OpenStreetMap contributors'
+  }).addTo(map);
+  if(map.hasLayer(osm))map.removeLayer(osm);
+};
+
+let routes=[],stops=[],trips=[],stopTimes=[],shapes=[];
+let routeLayers=new Map(),stopMarkers=new Map(),selectedRoute=null;
+const allLines=L.layerGroup().addTo(map);
+const allStops=L.layerGroup().addTo(map);
+
+function parseCSV(text){
+  const rows=[];let row=[],cell="",quoted=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i],n=text[i+1];
+    if(c==='"'&&quoted&&n==='"'){cell+='"';i++}
+    else if(c==='"'){quoted=!quoted}
+    else if(c===","&&!quoted){row.push(cell);cell=""}
+    else if((c==="\n"||c==="\r")&&!quoted){
+      if(c==="\r"&&n==="\n")i++;
+      row.push(cell);if(row.some(v=>v!==""))rows.push(row);row=[];cell="";
+    }else cell+=c;
+  }
+  if(cell.length||row.length){row.push(cell);rows.push(row)}
+  if(!rows.length)return [];
+  const headers=rows.shift().map(x=>x.trim().replace(/^\uFEFF/,""));
+  return rows.map(r=>{const o={};headers.forEach((h,i)=>o[h]=(r[i]||"").trim());return o});
+}
+function fileText(zip,name){const f=zip.file(name);return f?f.async("string"):Promise.resolve("")}
+function colorFor(r){const c=(r.route_color||"").replace("#","");return /^[0-9a-fA-F]{6}$/.test(c)?"#"+c:"#2874d0"}
+function escapeHTML(v){return String(v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function addStop(s){
+  const lat=Number(s.stop_lat),lon=Number(s.stop_lon);
+  if(!Number.isFinite(lat)||!Number.isFinite(lon))return;
+  const marker=L.circleMarker([lat,lon],{radius:3.3,color:"#fff",weight:1,fillColor:"#344b67",fillOpacity:.9})
+    .bindPopup("<b>"+escapeHTML(s.stop_name||"Bus stop")+"</b><br>Stop ID: "+escapeHTML(s.stop_id||"—"));
+  stopMarkers.set(s.stop_id,marker);marker.addTo(allStops);
+}
+function buildNetwork(){
+  const tripsByRoute=new Map(),shapesById=new Map();
+  trips.forEach(t=>{if(!tripsByRoute.has(t.route_id))tripsByRoute.set(t.route_id,[]);tripsByRoute.get(t.route_id).push(t)});
+  shapes.forEach(s=>{if(!shapesById.has(s.shape_id))shapesById.set(s.shape_id,[]);shapesById.get(s.shape_id).push(s)});
+  shapesById.forEach(a=>a.sort((x,y)=>Number(x.shape_pt_sequence)-Number(y.shape_pt_sequence)));
+  routes.forEach(r=>{
+    const layer=L.featureGroup(),drawn=new Set();
+    (tripsByRoute.get(r.route_id)||[]).forEach(t=>{
+      if(!t.shape_id||drawn.has(t.shape_id))return;drawn.add(t.shape_id);
+      const pts=shapesById.get(t.shape_id)||[];
+      const coords=pts.map(p=>[Number(p.shape_pt_lat),Number(p.shape_pt_lon)]).filter(p=>Number.isFinite(p[0])&&Number.isFinite(p[1]));
+      if(coords.length>1)L.polyline(coords,{color:colorFor(r),weight:4,opacity:.86,lineJoin:"round"})
+        .bindPopup("<b>"+escapeHTML(r.route_short_name||"Bus route")+"</b><br>"+escapeHTML(r.route_long_name||"")).addTo(layer);
+    });
+    routeLayers.set(r.route_id,layer);layer.addTo(allLines);
+  });
+  stops.forEach(addStop);
+  document.getElementById("routeCount").textContent=routes.length+" routes";
+  document.getElementById("stopCount").textContent=stops.length+" stops";
+  document.getElementById("networkStats").textContent=routes.length+" routes · "+stops.length+" stops";
+  document.getElementById("basStatus").innerHTML='<i class="status-dot ok"></i>Official GTFS loaded';
+  renderRoutes();renderStops();
+}
+function renderRoutes(query=""){
+  const list=document.getElementById("routeList");list.innerHTML="";
+  const found=routes.filter(r=>(r.route_short_name+" "+r.route_long_name+" "+r.route_desc).toLowerCase().includes(query.toLowerCase()));
+  if(!found.length){list.innerHTML='<div class="empty">No matching routes found.</div>';return}
+  found.forEach(r=>{
+    const b=document.createElement("button");b.className="route"+(selectedRoute===r.route_id?" selected":"");
+    b.innerHTML='<i class="route-color" style="background:'+colorFor(r)+'"></i><span class="route-info"><b>'+escapeHTML(r.route_short_name||r.route_id)+'</b><small>'+escapeHTML(r.route_long_name||r.route_desc||"BAS.MY Johor Bahru")+'</small></span><span class="route-arrow">›</span>';
+    b.onclick=()=>selectRoute(r.route_id);list.appendChild(b);
+  });
+}
+function renderStops(query=""){
+  const list=document.getElementById("stopList");list.innerHTML="";
+  const found=stops.filter(s=>(s.stop_name||"").toLowerCase().includes(query.toLowerCase())).slice(0,150);
+  if(!found.length){list.innerHTML='<div class="empty">No matching stops found.</div>';return}
+  found.forEach(s=>{
+    const b=document.createElement("button");b.className="route";
+    b.innerHTML='<i class="route-color" style="background:#8795a6"></i><span class="route-info"><b>'+escapeHTML(s.stop_name||"Unnamed stop")+'</b><small>'+escapeHTML(s.stop_id||"")+'</small></span><span class="route-arrow">›</span>';
+    b.onclick=()=>{const p=[Number(s.stop_lat),Number(s.stop_lon)];if(Number.isFinite(p[0])&&Number.isFinite(p[1])){map.setView(p,16);const m=stopMarkers.get(s.stop_id);if(m)m.openPopup()}};
+    list.appendChild(b);
+  });
+}
+function selectRoute(id){
+  selectedRoute=id;allLines.clearLayers();allStops.clearLayers();
+  if(id){
+    const layer=routeLayers.get(id);if(layer)layer.addTo(allLines);
+    const tripIds=new Set(trips.filter(t=>t.route_id===id).map(t=>t.trip_id));
+    const ids=new Set(stopTimes.filter(s=>tripIds.has(s.trip_id)).map(s=>s.stop_id));
+    stops.filter(s=>ids.has(s.stop_id)).forEach(s=>{const m=stopMarkers.get(s.stop_id);if(m)m.addTo(allStops)});
+    if(layer&&layer.getLayers().length){const bounds=layer.getBounds();if(bounds.isValid())map.fitBounds(bounds,{padding:[35,35],maxZoom:14})}
+  }else{routeLayers.forEach(l=>l.addTo(allLines));stopMarkers.forEach(m=>m.addTo(allStops))}
+  renderRoutes(document.getElementById("search").value);
+}
+const views={routes:"routesView",stops:"stopsView",operators:"operatorsView"};
+function switchTab(tab){
+  Object.entries(views).forEach(([k,id])=>document.getElementById(id).hidden=k!==tab);
+  document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("active",b.id===tab+"Tab"));
+  document.getElementById("search").placeholder=tab==="stops"?"Search bus stop…":tab==="routes"?"Search route or destination…":"Search operators…";
+}
+document.getElementById("routesTab").onclick=()=>switchTab("routes");
+document.getElementById("stopsTab").onclick=()=>switchTab("stops");
+document.getElementById("operatorsTab").onclick=()=>switchTab("operators");
+document.getElementById("search").addEventListener("input",e=>{
+  const active=document.querySelector(".tab.active")?.id;
+  if(active==="stopsTab")renderStops(e.target.value);else if(active==="routesTab")renderRoutes(e.target.value);
+});
+document.getElementById("allRoutesBtn").onclick=()=>selectRoute(null);
+
+async function loadGTFS(){
+  try{
+    const response=await fetch(GTFS_URL);
+    if(!response.ok)throw new Error("GTFS server returned "+response.status);
+    const zip=await JSZip.loadAsync(await response.arrayBuffer());
+    const names=["routes.txt","stops.txt","trips.txt","stop_times.txt","shapes.txt"];
+    const contents=await Promise.all(names.map(n=>fileText(zip,n)));
+    routes=parseCSV(contents[0]);stops=parseCSV(contents[1]);trips=parseCSV(contents[2]);stopTimes=parseCSV(contents[3]);shapes=parseCSV(contents[4]);
+    if(!routes.length||!stops.length)throw new Error("Route or stop data is missing in the GTFS feed.");
+    buildNetwork();
+  }catch(error){
+    console.error(error);
+    document.getElementById("basStatus").innerHTML='<i class="status-dot"></i>GTFS data unavailable';
+    document.getElementById("routeList").innerHTML='<div class="loading">Could not load the official GTFS feed.<br>'+escapeHTML(error.message)+'<br><br>Open through localhost and check your internet connection.</div>';
+  }
+}
+loadGTFS();
+</script>
+</body>
+</html>
